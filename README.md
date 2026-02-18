@@ -59,7 +59,7 @@ Outputs:
 ### CLI
 
 ```bash
-./build/meowhash256 "Hello, World!"
+./build/meowhash256 "Hello, World"
 ./build/meowhash256 --file /path/to/file
 ./build/meowhash256  # hash empty string
 ```
