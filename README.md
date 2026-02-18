@@ -97,7 +97,7 @@ digest = meowhash256(b"Hello, World!")
 ## Testing
 
 ```bash
-python tests/test_meowhash256.py
+python3 tests/test_meowhash256.py
 ```
 
 | Category | Count | Description |
