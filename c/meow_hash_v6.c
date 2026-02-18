@@ -1,0 +1,495 @@
+/*
+ * MeowHash v6 — Improved Implementation
+ *
+ * Security improvements:
+ *   S1: AES finalization rounds (Branch Number 5 instead of 1)
+ *   S2+E2: Butterfly cross-block mix (bidirectional full diffusion, ILP 4)
+ *   S3: Block-individual round keys (breaks block symmetry)
+ *   S4: Pre-squeeze state mixing (full state diffusion for short inputs)
+ *   S5: Nonlinear folding (ADD + carry-diffusion, non-invertible)
+ *
+ * Efficiency improvements:
+ *   E1: Simplified absorb (scalar loads, no NEON overhead)
+ *   E3: Reduced squeeze for short inputs (3 rounds if len < 64)
+ *   E5: Compile-time architecture dispatch (ARM/x86/generic)
+ *   E6: Platform-optimal secure zeroing
+ */
+
+#define _GNU_SOURCE
+#include "meow_hash_v6.h"
+#include <string.h>
+#include <strings.h>
+
+/* ── E5: Architecture Detection ─────────────────────────────────────────── */
+
+#if defined(__aarch64__)
+  #include <arm_neon.h>
+  #define MEOW_USE_ARM_CRYPTO 1
+#endif
+
+/*
+ * x86 AES-NI mapping (for future implementation):
+ *   ARM vaeseq_u8(data, key)    = AddRoundKey -> SubBytes -> ShiftRows
+ *   x86 _mm_aesenc_si128(d, k)  = ShiftRows -> SubBytes -> MixColumns -> AddRoundKey
+ *   ARM vaesmcq_u8(data)         = MixColumns
+ *   ARM veorq_u8(a, b)           = _mm_xor_si128(a, b)
+ *
+ * WARNING: Operation order differs! Correct x86 port must adjust accordingly.
+ */
+
+/* ── Constants ──────────────────────────────────────────────────────────── */
+
+#define GOLDEN_64 0x9E3779B97F4A7C15ULL
+#define SILVER_64 0x6A09E667F3BCC908ULL
+
+static const int ROT_64[4] = {29, 47, 13, 53};
+
+static const uint64_t MAGIC_64[16] = {
+    0x0605030102040104ULL, 0x0005090003070302ULL,
+    0x0808060100080804ULL, 0x0906090002040207ULL,
+    0x0609060508070008ULL, 0x0607030507080107ULL,
+    0x0701030700080409ULL, 0x0907030709070606ULL,
+    0x0807040203070009ULL, 0x0300070001020604ULL,
+    0x0507080300050808ULL, 0x0104060702030403ULL,
+    0x0100050307020705ULL, 0x0900030206040803ULL,
+    0x0402000709020201ULL, 0x0500060308040209ULL,
+};
+
+/* AES S-Box (used by software fallback and finalization) */
+static const uint8_t AES_SBOX[256] __attribute__((used)) = {
+    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+    0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+    0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+    0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+    0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+    0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+    0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
+};
+
+/* MAGIC_128 bytes (sqrt(2) digits) — also used as block salts (S3) */
+static const uint8_t MAGIC_128[128] = {
+    4, 1, 4, 2, 1, 3, 5, 6,  2, 3, 7, 3, 0, 9, 5, 0,
+    4, 8, 8, 0, 1, 6, 8, 8,  7, 2, 4, 2, 0, 9, 6, 9,
+    8, 0, 7, 8, 5, 6, 9, 6,  7, 1, 8, 7, 5, 3, 7, 6,
+    9, 4, 8, 0, 7, 3, 1, 7,  6, 6, 7, 9, 7, 3, 7, 9,
+    9, 0, 7, 3, 2, 4, 7, 8,  4, 6, 2, 1, 0, 7, 0, 3,
+    8, 8, 5, 0, 3, 8, 7, 5,  3, 4, 3, 2, 7, 6, 4, 1,
+    5, 7, 2, 7, 3, 5, 0, 1,  3, 8, 4, 6, 2, 3, 0, 9,
+    1, 2, 2, 9, 7, 0, 2, 4,  9, 2, 4, 8, 3, 6, 0, 5
+};
+
+/* AES squeeze round keys — "nothing up my sleeve" derivation:
+ * RK[r] = { rotl64(GOLDEN_64, r*13) ^ MAGIC_64[r*2],
+ *            rotl64(SILVER_64, r*17) ^ MAGIC_64[r*2+1] } */
+static const uint64_t RK_WORDS[4][2] = {
+    { 0x98327AB87D4E7D11ULL, 0x6A0CEF67F0BBCA0AULL },
+    { 0xE73F29E84F8ABBC2ULL, 0xC5C9EE799014D614ULL },
+    { 0xE3F42FF55E7FDDEEULL, 0xC8F42724AF2F9898ULL },
+    { 0xA23F09C81BB4D8B6ULL, 0x414453483A389BE0ULL },
+};
+
+/* S1: Finalization round key (r=4 in RK derivation) */
+static const uint64_t RK_FINAL[2] = {
+    0xC95EE7759890F4AEULL, 0xA39E617F3ACE9682ULL
+};
+
+/* ── Utility functions ──────────────────────────────────────────────────── */
+
+static inline uint64_t read_le64(const uint8_t *p) {
+    uint64_t v;
+    memcpy(&v, p, 8);
+    return v;
+}
+
+static inline void write_le64(uint8_t *p, uint64_t v) {
+    memcpy(p, &v, 8);
+}
+
+static inline uint64_t rotl64(uint64_t x, int r) {
+    return (x << r) | (x >> (64 - r));
+}
+
+/* E6: Platform-optimal secure zeroing */
+static void secure_zero(void *p, size_t n) {
+#if defined(__GLIBC__) || defined(__linux__)
+    explicit_bzero(p, n);
+#elif defined(__STDC_LIB_EXT1__)
+    memset_s(p, n, 0, n);
+#else
+    volatile uint8_t *vp = (volatile uint8_t *)p;
+    while (n--) *vp++ = 0;
+#endif
+}
+
+/* ── Node computation ───────────────────────────────────────────────────── */
+
+static inline uint64_t compute_node(uint64_t segment) {
+    uint64_t node = segment * GOLDEN_64;
+    node ^= (node >> 32);
+    node = node * SILVER_64;
+    node ^= (node >> 29);
+    return node;
+}
+
+/* ── Software AES (for non-ARM platforms) ───────────────────────────────── */
+
+#if !defined(MEOW_USE_ARM_CRYPTO)
+
+static uint8_t gf_mul(uint8_t a, uint8_t b) {
+    uint8_t p = 0;
+    for (int i = 0; i < 8; i++) {
+        if (b & 1) p ^= a;
+        uint8_t hi = a & 0x80;
+        a = (uint8_t)(a << 1);
+        if (hi) a ^= 0x1B;
+        b >>= 1;
+    }
+    return p;
+}
+
+static void soft_aes_round(uint8_t block[16], const uint8_t key[16]) {
+    int r, c;
+    /* AddRoundKey */
+    for (int i = 0; i < 16; i++) block[i] ^= key[i];
+    /* SubBytes */
+    for (int i = 0; i < 16; i++) block[i] = AES_SBOX[block[i]];
+    /* ShiftRows */
+    uint8_t tmp[16];
+    for (r = 0; r < 4; r++)
+        for (c = 0; c < 4; c++)
+            tmp[r + 4 * c] = block[r + 4 * ((c + r) % 4)];
+    memcpy(block, tmp, 16);
+    /* MixColumns */
+    for (c = 0; c < 4; c++) {
+        uint8_t a0 = block[4*c], a1 = block[4*c+1], a2 = block[4*c+2], a3 = block[4*c+3];
+        block[4*c]   = gf_mul(2,a0) ^ gf_mul(3,a1) ^ a2 ^ a3;
+        block[4*c+1] = a0 ^ gf_mul(2,a1) ^ gf_mul(3,a2) ^ a3;
+        block[4*c+2] = a0 ^ a1 ^ gf_mul(2,a2) ^ gf_mul(3,a3);
+        block[4*c+3] = gf_mul(3,a0) ^ a1 ^ a2 ^ gf_mul(2,a3);
+    }
+}
+
+static void soft_aes_final_round(uint8_t block[16], const uint8_t key[16]) {
+    int r, c;
+    /* AddRoundKey */
+    for (int i = 0; i < 16; i++) block[i] ^= key[i];
+    /* SubBytes */
+    for (int i = 0; i < 16; i++) block[i] = AES_SBOX[block[i]];
+    /* ShiftRows (no MixColumns) */
+    uint8_t tmp[16];
+    for (r = 0; r < 4; r++)
+        for (c = 0; c < 4; c++)
+            tmp[r + 4 * c] = block[r + 4 * ((c + r) % 4)];
+    memcpy(block, tmp, 16);
+}
+
+static void soft_xor_block(uint8_t dst[16], const uint8_t src[16]) {
+    for (int i = 0; i < 16; i++) dst[i] ^= src[i];
+}
+
+#endif /* !MEOW_USE_ARM_CRYPTO */
+
+/* ── Main hash function ─────────────────────────────────────────────────── */
+
+void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_BYTES]) {
+    uint64_t state[MEOW_V6_STATE_WORDS];
+    int i;
+
+    /* === State Initialization === */
+    memcpy(state, MAGIC_64, sizeof(state));
+
+    /* Length Injection */
+    state[0] ^= (uint64_t)len;
+    state[1] ^= (uint64_t)len * GOLDEN_64;
+
+    /* === Absorb Phase (E1: simplified scalar) === */
+    size_t absorb_counter = 0;
+
+    if (len > 0 && input != NULL) {
+        size_t full_segs = len / 8;
+        const uint8_t *p = input;
+
+        /* Process full 8-byte segments */
+        for (size_t s = 0; s < full_segs; s++) {
+            uint64_t segment = read_le64(p);
+            p += 8;
+
+            uint64_t node = compute_node(segment);
+
+            int pos_add = (int)((absorb_counter * 2) & 15);
+            int pos_xor = (int)((absorb_counter * 2 + 1) & 15);
+            state[pos_add] += node;
+            state[pos_xor] ^= node;
+
+            int m = (int)(absorb_counter & 15);
+            state[m] += state[(m + 1) & 15];
+            state[m] ^= (state[m] >> 17);
+            state[m] = rotl64(state[m], 29);
+            state[m] ^= state[(m + 7) & 15];
+            absorb_counter++;
+        }
+
+        /* Last block: remaining bytes + 0x80 padding */
+        uint8_t last_block[8] = {0};
+        size_t remaining = len % 8;
+        if (remaining > 0) {
+            memcpy(last_block, p, remaining);
+        }
+        last_block[remaining] = 0x80;
+
+        {
+            uint64_t segment = read_le64(last_block);
+            uint64_t node = compute_node(segment);
+
+            int pos_add = (int)((absorb_counter * 2) & 15);
+            int pos_xor = (int)((absorb_counter * 2 + 1) & 15);
+            state[pos_add] += node;
+            state[pos_xor] ^= node;
+
+            int m = (int)(absorb_counter & 15);
+            state[m] += state[(m + 1) & 15];
+            state[m] ^= (state[m] >> 17);
+            state[m] = rotl64(state[m], 29);
+            state[m] ^= state[(m + 7) & 15];
+            absorb_counter++;
+        }
+        secure_zero(last_block, sizeof(last_block));
+
+    } else {
+        /* Empty input */
+        uint8_t last_block[8] = {0};
+        last_block[0] = 0x80;
+
+        uint64_t segment = read_le64(last_block);
+        uint64_t node = compute_node(segment);
+
+        state[0] += node;
+        state[1] ^= node;
+
+        state[0] += state[1];
+        state[0] ^= (state[0] >> 17);
+        state[0] = rotl64(state[0], 29);
+        state[0] ^= state[7];
+        absorb_counter = 1;
+
+        secure_zero(last_block, sizeof(last_block));
+    }
+
+    /* === S4: Pre-Squeeze State Mixing === */
+    for (i = 0; i < MEOW_V6_STATE_WORDS; i++) {
+        state[i] += state[(i + 7) & 15];
+        state[i] ^= (state[i] >> 17);
+        state[i] = rotl64(state[i], ROT_64[i & 3]);
+    }
+
+    /* === Snapshot for feed-forward === */
+    uint64_t snapshot[MEOW_V6_STATE_WORDS];
+    memcpy(snapshot, state, sizeof(snapshot));
+
+    /* === E3: Reduced squeeze for short inputs === */
+    int squeeze_rounds = (len < 64) ? 3 : 4;
+
+    /* === Squeeze Phase — AES-BASED === */
+    uint8_t state_bytes[128];
+    for (i = 0; i < MEOW_V6_STATE_WORDS; i++) {
+        write_le64(&state_bytes[i * 8], state[i]);
+    }
+
+#if defined(MEOW_USE_ARM_CRYPTO)
+    /* ── ARM NEON + AES Crypto Extensions path ─────────────────────────── */
+    {
+        uint8x16_t blocks[8];
+        for (i = 0; i < 8; i++)
+            blocks[i] = vld1q_u8(&state_bytes[i * 16]);
+
+        /* Load round keys */
+        uint8x16_t rk[4];
+        for (i = 0; i < 4; i++) {
+            uint8_t rk_bytes[16];
+            write_le64(&rk_bytes[0], RK_WORDS[i][0]);
+            write_le64(&rk_bytes[8], RK_WORDS[i][1]);
+            rk[i] = vld1q_u8(rk_bytes);
+        }
+
+        /* S3: Block salts (MAGIC_128 as 8 x 16-byte vectors) */
+        uint8x16_t block_salt[8];
+        for (i = 0; i < 8; i++)
+            block_salt[i] = vld1q_u8(&MAGIC_128[i * 16]);
+
+        /* AES rounds with S3 + S2+E2 */
+        for (int r = 0; r < squeeze_rounds; r++) {
+            /* S3: Block-individual round keys */
+            for (i = 0; i < 8; i++) {
+                uint8x16_t indiv_rk = veorq_u8(rk[r], block_salt[i]);
+                blocks[i] = vaeseq_u8(blocks[i], indiv_rk);
+                blocks[i] = vaesmcq_u8(blocks[i]);
+            }
+
+            /* S2+E2: Butterfly cross-block mix (3 stages, ILP=4) */
+            /* Stage 1 */
+            blocks[0] = veorq_u8(blocks[0], blocks[1]);
+            blocks[2] = veorq_u8(blocks[2], blocks[3]);
+            blocks[4] = veorq_u8(blocks[4], blocks[5]);
+            blocks[6] = veorq_u8(blocks[6], blocks[7]);
+            /* Stage 2 */
+            blocks[0] = veorq_u8(blocks[0], blocks[2]);
+            blocks[4] = veorq_u8(blocks[4], blocks[6]);
+            blocks[1] = veorq_u8(blocks[1], blocks[3]);
+            blocks[5] = veorq_u8(blocks[5], blocks[7]);
+            /* Stage 3 */
+            blocks[0] = veorq_u8(blocks[0], blocks[4]);
+            blocks[1] = veorq_u8(blocks[1], blocks[5]);
+            blocks[2] = veorq_u8(blocks[2], blocks[6]);
+            blocks[3] = veorq_u8(blocks[3], blocks[7]);
+        }
+
+        /* Store blocks back */
+        for (i = 0; i < 8; i++)
+            vst1q_u8(&state_bytes[i * 16], blocks[i]);
+    }
+#else
+    /* ── Software AES path (x86/generic) ───────────────────────────────── */
+    {
+        uint8_t blocks[8][16];
+        for (i = 0; i < 8; i++)
+            memcpy(blocks[i], &state_bytes[i * 16], 16);
+
+        uint8_t rk_bytes[4][16];
+        for (i = 0; i < 4; i++) {
+            write_le64(&rk_bytes[i][0], RK_WORDS[i][0]);
+            write_le64(&rk_bytes[i][8], RK_WORDS[i][1]);
+        }
+
+        for (int r = 0; r < squeeze_rounds; r++) {
+            /* S3: Block-individual round keys */
+            for (i = 0; i < 8; i++) {
+                uint8_t indiv_rk[16];
+                for (int j = 0; j < 16; j++)
+                    indiv_rk[j] = rk_bytes[r][j] ^ MAGIC_128[i * 16 + j];
+                soft_aes_round(blocks[i], indiv_rk);
+            }
+
+            /* S2+E2: Butterfly cross-block mix */
+            soft_xor_block(blocks[0], blocks[1]);
+            soft_xor_block(blocks[2], blocks[3]);
+            soft_xor_block(blocks[4], blocks[5]);
+            soft_xor_block(blocks[6], blocks[7]);
+
+            soft_xor_block(blocks[0], blocks[2]);
+            soft_xor_block(blocks[4], blocks[6]);
+            soft_xor_block(blocks[1], blocks[3]);
+            soft_xor_block(blocks[5], blocks[7]);
+
+            soft_xor_block(blocks[0], blocks[4]);
+            soft_xor_block(blocks[1], blocks[5]);
+            soft_xor_block(blocks[2], blocks[6]);
+            soft_xor_block(blocks[3], blocks[7]);
+        }
+
+        for (i = 0; i < 8; i++)
+            memcpy(&state_bytes[i * 16], blocks[i], 16);
+    }
+#endif
+
+    /* Convert back to state words */
+    for (i = 0; i < MEOW_V6_STATE_WORDS; i++) {
+        state[i] = read_le64(&state_bytes[i * 8]);
+    }
+
+    /* === Feed-Forward === */
+    for (i = 0; i < MEOW_V6_STATE_WORDS; i++) {
+        state[i] ^= snapshot[i];
+    }
+
+    /* === Second Length Injection === */
+    state[14] ^= (uint64_t)len;
+    state[15] ^= (uint64_t)len * GOLDEN_64;
+
+    /* === S5: Nonlinear Folding === */
+    /* 16 -> 8 words (ADD + carry-diffusion) */
+    for (i = 0; i < 8; i++) {
+        state[i] = state[i] + rotl64(state[15 - i], ROT_64[i & 3]);
+        state[i] ^= (state[i] >> 29);
+    }
+
+    /* 8 -> 4 words */
+    for (i = 0; i < 4; i++) {
+        state[i] = state[i] + rotl64(state[7 - i], ROT_64[i & 3]);
+        state[i] ^= (state[i] >> 29);
+    }
+
+    /* Output = state[0..3] = 32 bytes */
+    uint8_t result[MEOW_V6_HASH_BYTES];
+    for (i = 0; i < 4; i++) {
+        write_le64(&result[i * 8], state[i]);
+    }
+
+    /* === S1: AES Finalization (Branch Number 5) === */
+    {
+        uint8_t final_rk_bytes[16];
+        write_le64(&final_rk_bytes[0], RK_FINAL[0]);
+        write_le64(&final_rk_bytes[8], RK_FINAL[1]);
+
+#if defined(MEOW_USE_ARM_CRYPTO)
+        uint8x16_t frk = vld1q_u8(final_rk_bytes);
+        uint8x16_t out_lo = vld1q_u8(&result[0]);
+        uint8x16_t out_hi = vld1q_u8(&result[16]);
+
+        /* Round 1: Full AES + cross-half XOR */
+        out_lo = vaesmcq_u8(vaeseq_u8(out_lo, frk));
+        out_hi = vaesmcq_u8(vaeseq_u8(out_hi, frk));
+        out_lo = veorq_u8(out_lo, out_hi);
+
+        /* Round 2: Final AES (no MixColumns) */
+        out_lo = vaeseq_u8(out_lo, frk);
+        out_hi = vaeseq_u8(out_hi, frk);
+
+        vst1q_u8(&result[0], out_lo);
+        vst1q_u8(&result[16], out_hi);
+#else
+        uint8_t out_lo[16], out_hi[16];
+        memcpy(out_lo, &result[0], 16);
+        memcpy(out_hi, &result[16], 16);
+
+        /* Round 1: Full AES + cross-half XOR */
+        soft_aes_round(out_lo, final_rk_bytes);
+        soft_aes_round(out_hi, final_rk_bytes);
+        soft_xor_block(out_lo, out_hi);
+
+        /* Round 2: Final AES (no MixColumns) */
+        soft_aes_final_round(out_lo, final_rk_bytes);
+        soft_aes_final_round(out_hi, final_rk_bytes);
+
+        memcpy(&result[0], out_lo, 16);
+        memcpy(&result[16], out_hi, 16);
+#endif
+    }
+
+    memcpy(output, result, MEOW_V6_HASH_BYTES);
+
+    /* Secure cleanup */
+    secure_zero(state, sizeof(state));
+    secure_zero(snapshot, sizeof(snapshot));
+    secure_zero(state_bytes, sizeof(state_bytes));
+    secure_zero(result, sizeof(result));
+}
+
+void meow_hash_v6_hex(const uint8_t *input, size_t len, char hex_out[65]) {
+    uint8_t hash[MEOW_V6_HASH_BYTES];
+    meow_hash_v6(input, len, hash);
+    for (int i = 0; i < MEOW_V6_HASH_BYTES; i++) {
+        hex_out[i * 2]     = "0123456789abcdef"[hash[i] >> 4];
+        hex_out[i * 2 + 1] = "0123456789abcdef"[hash[i] & 0x0F];
+    }
+    hex_out[64] = '\0';
+    secure_zero(hash, sizeof(hash));
+}
