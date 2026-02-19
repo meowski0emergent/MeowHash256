@@ -468,13 +468,15 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
     /* 16 -> 8 words (ADD + carry-diffusion) */
     for (i = 0; i < 8; i++) {
         state[i] = state[i] + rotl64(state[15 - i], ROT_64[i & 3]);
-        state[i] ^= (state[i] >> 29);
+        /* V6: Position-dependent shift constants */
+        state[i] ^= (state[i] >> (29 + (i & 3)));
     }
 
     /* 8 -> 4 words */
     for (i = 0; i < 4; i++) {
         state[i] = state[i] + rotl64(state[7 - i], ROT_64[i & 3]);
-        state[i] ^= (state[i] >> 29);
+        /* V6: Position-dependent shift constants */
+        state[i] ^= (state[i] >> (29 + (i & 3)));
     }
 
     /* Output = state[0..3] = 32 bytes */
