@@ -1,12 +1,18 @@
 /*
- * MeowHash v6 — Improved Implementation
+ * MeowHash v6 — Improved Implementation (with V1–V6 + Butterfly-Fix)
  *
  * Security improvements:
  *   S1: AES finalization rounds (Branch Number 5 instead of 1)
  *   S2+E2: Bidirectional butterfly cross-block mix (full diffusion, ILP 4)
  *   S3: Block-individual round keys (breaks block symmetry)
- *   S4: Pre-squeeze state mixing (full state diffusion for short inputs)
- *   S5: Nonlinear folding (ADD + carry-diffusion, non-invertible)
+ *   S4: Pre-squeeze state mixing (bidirectional, V3)
+ *   S5: Nonlinear folding (ADD + carry-diffusion, non-invertible, V6 variable shifts)
+ *   V1: SILVER_64 made odd (bijective compute_node)
+ *   V2: Absorb-counter injection (explicit segment count encoding)
+ *   V3: Bidirectional S4 (forward + reverse pass)
+ *   V4: Absorb cross-coupling (opposite state half linkage)
+ *   V5: Empty-input path consistency
+ *   V6: Position-dependent shift constants in folding
  *
  * Efficiency improvements:
  *   E1: Simplified absorb (scalar loads, no NEON overhead)
