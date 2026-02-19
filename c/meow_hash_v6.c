@@ -3,7 +3,7 @@
  *
  * Security improvements:
  *   S1: AES finalization rounds (Branch Number 5 instead of 1)
- *   S2+E2: Butterfly cross-block mix (bidirectional full diffusion, ILP 4)
+ *   S2+E2: Bidirectional butterfly cross-block mix (full diffusion, ILP 4)
  *   S3: Block-individual round keys (breaks block symmetry)
  *   S4: Pre-squeeze state mixing (full state diffusion for short inputs)
  *   S5: Nonlinear folding (ADD + carry-diffusion, non-invertible)
@@ -40,7 +40,7 @@
 /* ── Constants ──────────────────────────────────────────────────────────── */
 
 #define GOLDEN_64 0x9E3779B97F4A7C15ULL
-#define SILVER_64 0x6A09E667F3BCC908ULL
+#define SILVER_64 0x6A09E667F3BCC909ULL  /* V1: made odd (0 trailing zeros) */
 
 static const int ROT_64[4] = {29, 47, 13, 53};
 
@@ -91,15 +91,15 @@ static const uint8_t MAGIC_128[128] = {
  * RK[r] = { rotl64(GOLDEN_64, r*13) ^ MAGIC_64[r*2],
  *            rotl64(SILVER_64, r*17) ^ MAGIC_64[r*2+1] } */
 static const uint64_t RK_WORDS[4][2] = {
-    { 0x98327AB87D4E7D11ULL, 0x6A0CEF67F0BBCA0AULL },
-    { 0xE73F29E84F8ABBC2ULL, 0xC5C9EE799014D614ULL },
-    { 0xE3F42FF55E7FDDEEULL, 0xC8F42724AF2F9898ULL },
-    { 0xA23F09C81BB4D8B6ULL, 0x414453483A389BE0ULL },
+    { 0x98327AB87D4E7D11ULL, 0x6A0CEF67F0BBCA0BULL },
+    { 0xE73F29E84F8ABBC2ULL, 0xC5C9EE799016D614ULL },
+    { 0xE3F42FF55E7FDDEEULL, 0xC8F42720AF2F9898ULL },
+    { 0xA23F09C81BB4D8B6ULL, 0x414C53483A389BE0ULL },
 };
 
 /* S1: Finalization round key (r=4 in RK derivation) */
 static const uint64_t RK_FINAL[2] = {
-    0xC95EE7759890F4AEULL, 0xA39E617F3ACE9682ULL
+    0xC95EE7759890F4AEULL, 0xA39E617F3ACE9692ULL
 };
 
 /* ── Utility functions ──────────────────────────────────────────────────── */
