@@ -290,10 +290,21 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
         secure_zero(last_block, sizeof(last_block));
     }
 
+    /* === V2: Absorb-Counter Injection === */
+    state[2] ^= (uint64_t)absorb_counter;
+    state[3] ^= (uint64_t)absorb_counter * GOLDEN_64;
+
     /* === S4: Pre-Squeeze State Mixing === */
+    /* V3: Forward pass */
     for (i = 0; i < MEOW_V6_STATE_WORDS; i++) {
         state[i] += state[(i + 7) & 15];
         state[i] ^= (state[i] >> 17);
+        state[i] = rotl64(state[i], ROT_64[i & 3]);
+    }
+    /* V3: Reverse pass (different shift + offset to avoid fixpoints) */
+    for (i = MEOW_V6_STATE_WORDS - 1; i >= 0; i--) {
+        state[i] += state[(i + 5) & 15];
+        state[i] ^= (state[i] >> 23);
         state[i] = rotl64(state[i], ROT_64[i & 3]);
     }
 
