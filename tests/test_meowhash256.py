@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MeowHash256 — Test Suite
+MeowHash256 — Test Suite (V1–V6 + Butterfly-Fix)
 
 Tests:
   1. Constants verification
@@ -9,7 +9,9 @@ Tests:
   4. Uniqueness
   5. Avalanche effect
   6. C/Python consistency
-  7. Reference values
+  7. Reference values (updated for V1–V6)
+  8. V1 verification (SILVER_64 odd)
+  9. Short input sensitivity
 """
 
 import os
@@ -19,14 +21,13 @@ import subprocess
 import struct
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from python.meowhash256 import meowhash256, meowhash256_hex, MAGIC_64, MAGIC_128, AES_SBOX
+from python.meowhash256 import meowhash256, meowhash256_hex, MAGIC_64, MAGIC_128, AES_SBOX, SILVER_64
 
 
 def load_c_library():
     lib_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                             'build', 'libmeowhash256.so')
     if not os.path.exists(lib_path):
-        # Try old name
         lib_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                 'build', 'libmeowhash_v6.so')
     if not os.path.exists(lib_path):
@@ -88,6 +89,13 @@ def test_constants():
     check("AES_SBOX length", len(AES_SBOX) == 256)
     check("AES_SBOX[0] == 0x63", AES_SBOX[0] == 0x63)
     check("AES_SBOX[0xFF] == 0x16", AES_SBOX[0xFF] == 0x16)
+
+    # V1: SILVER_64 must be odd
+    check("V1: SILVER_64 is odd", SILVER_64 & 1 == 1,
+          f"SILVER_64 = 0x{SILVER_64:016X} has {bin(SILVER_64 & 0xFF).count('0')} trailing zeros")
+    check("V1: SILVER_64 trailing zeros == 0",
+          (SILVER_64 & 7) != 0,
+          f"Last 3 bits: {SILVER_64 & 7}")
 
     for i in range(16):
         expected = struct.unpack_from('<Q', MAGIC_128, i * 8)[0]
@@ -209,12 +217,12 @@ def test_c_python_hex_consistency(lib):
 
 
 def test_reference_values():
-    print("\n=== Reference Values ===")
+    print("\n=== Reference Values (V1-V6 + Butterfly-Fix) ===")
     refs = [
         (b"", 'empty string',
-         '0327d2a5b61959ed3f80901e24a29a7da0a9c5b57a7c4fde8d0620f986923978'),
+         '0eec3b0e25ec8486bbff79280f9712b94ac6636742ff06b96dc092c201609f45'),
         (b"MeowHash", '"MeowHash"',
-         '2c9e16c3e938585960244fcf139794668f1ca8f874c674d59ddc8a4b468d44e4'),
+         '6df6bc0f68876ceb90d7bf6d158033f05b4955123a6d9e18f4cff5df81603cc3'),
     ]
     for data, desc, expected in refs:
         h = meowhash256_hex(data)
@@ -227,12 +235,66 @@ def test_reference_values():
     h = meowhash256_hex(b"a" * 1_000_000)
     print(f"  Hash:  {h}")
     check("1M 'a' reference",
-          h == "f499d98544d72c3a2580b60372200ec816d609b8c9fc23d9191df9af3b482994")
+          h == "8b8d2535e3e6475e73a51b410959d12dad621c34ce7b14285761451e0b68e633")
+
+
+def test_v1_bijective():
+    """V1: Verify SILVER_64 is odd and compute_node has no trivial collisions."""
+    print("\n=== V1: compute_node Bijectivity ===")
+    from python.meowhash256 import _compute_node
+
+    # Check trailing zeros
+    trailing = 0
+    v = SILVER_64
+    while v and (v & 1) == 0:
+        trailing += 1
+        v >>= 1
+    check(f"SILVER_64 trailing zeros = {trailing}", trailing == 0)
+
+    # Old weakness: a + 2^61 should NO LONGER collide
+    a = 0x1234567890ABCDEF
+    b = (a + (1 << 61)) & 0xFFFFFFFFFFFFFFFF
+    na = _compute_node(a)
+    nb = _compute_node(b)
+    check("Old W1 weakness (a + 2^61) no longer collides", na != nb,
+          f"node(a) = 0x{na:016X}, node(b) = 0x{nb:016X}")
+
+    # Brute-force: check for collisions among many random inputs
+    import random
+    seen = {}
+    collisions = 0
+    n_trials = 500_000
+    rng = random.Random(42)
+    for _ in range(n_trials):
+        x = rng.getrandbits(64)
+        nx = _compute_node(x)
+        if nx in seen and seen[nx] != x:
+            collisions += 1
+        seen[nx] = x
+    check(f"No node collisions in {n_trials} trials", collisions == 0,
+          f"Found {collisions} collisions")
+
+
+def test_short_input_sensitivity():
+    """Test that even 1-byte inputs produce well-distributed hashes."""
+    print("\n=== Short Input Sensitivity ===")
+    hashes = set()
+    for b in range(256):
+        h = meowhash256(bytes([b]))
+        hashes.add(h)
+    check("All 256 single-byte inputs produce unique hashes", len(hashes) == 256)
+
+    # Check hamming distances between consecutive single-byte hashes
+    h0 = meowhash256(b'\x00')
+    h1 = meowhash256(b'\x01')
+    hd = bit_diff(h0, h1)
+    check(f"Hamming(H(0x00), H(0x01)) = {hd} (expect ~128)",
+          80 < hd < 176, f"Got {hd}")
 
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("MeowHash256 — Test Suite")
+    print("MeowHash256 — Test Suite (V1-V6 + Butterfly-Fix)")
     print("=" * 60)
 
     test_constants()
@@ -241,6 +303,8 @@ if __name__ == '__main__':
     test_uniqueness()
     test_avalanche()
     test_short_long_boundary()
+    test_v1_bijective()
+    test_short_input_sensitivity()
 
     try:
         lib = load_c_library()
