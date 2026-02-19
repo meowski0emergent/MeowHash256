@@ -1,26 +1,32 @@
 """
-MeowHash256 — Pure Python Reference Implementation
+MeowHash256 — Pure Python Reference Implementation (V1–V6 + Butterfly-Fix)
 
 This is the pure Python implementation with zero external dependencies.
 For maximum performance, use the C-binding version (meowhash256_c.py).
 
 Security features:
   S1: AES finalization (Branch Number 5)
-  S2: Butterfly cross-block mix (full diffusion, ILP 4)
+  S2: Bidirectional butterfly cross-block mix (full diffusion, ILP 4)
   S3: Block-individual round keys
-  S4: Pre-squeeze state mixing
-  S5: Nonlinear folding (non-invertible)
+  S4: Pre-squeeze state mixing (bidirectional, V3)
+  S5: Nonlinear folding (non-invertible, V6 variable shifts)
+  V1: SILVER_64 made odd (bijective compute_node)
+  V2: Absorb-counter injection
+  V3: Bidirectional S4 (forward + reverse pass)
+  V4: Absorb cross-coupling
+  V5: Empty-input path consistency
+  V6: Position-dependent shift constants in folding
 
 Efficiency features:
   E1: Simplified scalar absorb
-  E3: Adaptive squeeze rounds (3 for <64B, 4 for ≥64B)
+  E3: Adaptive squeeze rounds (3 for <64B, 4 for >=64B)
 """
 
 import struct
 
 MASK64 = 0xFFFFFFFFFFFFFFFF
 GOLDEN_64 = 0x9E3779B97F4A7C15
-SILVER_64 = 0x6A09E667F3BCC908
+SILVER_64 = 0x6A09E667F3BCC909  # V1: made odd (0 trailing zeros)
 
 ROT_64 = [29, 47, 13, 53]
 
@@ -58,13 +64,13 @@ AES_SBOX = [
 ]
 
 RK_WORDS = [
-    (0x98327AB87D4E7D11, 0x6A0CEF67F0BBCA0A),
-    (0xE73F29E84F8ABBC2, 0xC5C9EE799014D614),
-    (0xE3F42FF55E7FDDEE, 0xC8F42724AF2F9898),
-    (0xA23F09C81BB4D8B6, 0x414453483A389BE0),
+    (0x98327AB87D4E7D11, 0x6A0CEF67F0BBCA0B),
+    (0xE73F29E84F8ABBC2, 0xC5C9EE799016D614),
+    (0xE3F42FF55E7FDDEE, 0xC8F42720AF2F9898),
+    (0xA23F09C81BB4D8B6, 0x414C53483A389BE0),
 ]
 
-RK_FINAL = (0xC95EE7759890F4AE, 0xA39E617F3ACE9682)
+RK_FINAL = (0xC95EE7759890F4AE, 0xA39E617F3ACE9692)
 
 _Q_STRUCT = struct.Struct('<Q')
 _16Q_PACK = struct.Struct('<16Q').pack
@@ -133,7 +139,7 @@ def _xor_blocks(a, b):
 def _compute_node(segment):
     node = (segment * GOLDEN_64) & MASK64
     node ^= (node >> 32)
-    node = (node * SILVER_64) & MASK64
+    node = (node * SILVER_64) & MASK64  # V1: now bijective (SILVER_64 is odd)
     node ^= (node >> 29)
     return node
 
@@ -158,26 +164,56 @@ def meowhash256(data: bytes) -> bytes:
     absorb_counter = 0
     unpack = _Q_STRUCT.unpack_from
 
-    for offset in range(0, len(padded), 8):
-        segment = unpack(padded, offset)[0]
+    if input_len > 0:
+        for offset in range(0, len(padded), 8):
+            segment = unpack(padded, offset)[0]
+            node = _compute_node(segment)
+
+            pos_add = (absorb_counter * 2) & 15
+            pos_xor = (absorb_counter * 2 + 1) & 15
+            state[pos_add] = (state[pos_add] + node) & mask
+            state[pos_xor] ^= node
+
+            m = absorb_counter & 15
+            sm = (state[m] + state[(m + 1) & 15]) & mask
+            sm ^= (sm >> 17)
+            sm = ((sm << 29) | (sm >> 35)) & mask
+            sm ^= state[(m + 7) & 15]
+            state[m] = sm
+            # V4: Cross-coupling to opposite state half
+            state[(m + 8) & 15] ^= state[m]
+            absorb_counter += 1
+    else:
+        # Empty input path
+        segment = unpack(padded, 0)[0]
         node = _compute_node(segment)
-
-        pos_add = (absorb_counter * 2) & 15
-        pos_xor = (absorb_counter * 2 + 1) & 15
-        state[pos_add] = (state[pos_add] + node) & mask
-        state[pos_xor] ^= node
-
-        m = absorb_counter & 15
-        sm = (state[m] + state[(m + 1) & 15]) & mask
+        state[0] = (state[0] + node) & mask
+        state[1] ^= node
+        sm = (state[0] + state[1]) & mask
         sm ^= (sm >> 17)
         sm = ((sm << 29) | (sm >> 35)) & mask
-        sm ^= state[(m + 7) & 15]
-        state[m] = sm
-        absorb_counter += 1
+        sm ^= state[7]
+        state[0] = sm
+        # V5: Empty-input cross-coupling consistency
+        state[8] ^= state[0]
+        absorb_counter = 1
 
+    # V2: Absorb-counter injection
+    state[2] = (state[2] ^ absorb_counter) & mask
+    state[3] = (state[3] ^ ((absorb_counter * golden) & mask)) & mask
+
+    # S4: Pre-squeeze state mixing
+    # V3: Forward pass
     for i in range(16):
         state[i] = (state[i] + state[(i + 7) & 15]) & mask
         state[i] ^= (state[i] >> 17)
+        r = rot_64[i & 3]
+        state[i] = ((state[i] << r) | (state[i] >> (64 - r))) & mask
+
+    # V3: Reverse pass (different shift + offset)
+    for i in range(15, -1, -1):
+        state[i] = (state[i] + state[(i + 5) & 15]) & mask
+        state[i] ^= (state[i] >> 23)
         r = rot_64[i & 3]
         state[i] = ((state[i] << r) | (state[i] >> (64 - r))) & mask
 
@@ -199,6 +235,7 @@ def meowhash256(data: bytes) -> bytes:
             indiv_rk = _xor_blocks(rk_blocks[r], block_salts[i])
             blocks[i] = _aes_round(blocks[i], indiv_rk)
 
+        # Forward butterfly
         blocks[0] = _xor_blocks(blocks[0], blocks[1])
         blocks[2] = _xor_blocks(blocks[2], blocks[3])
         blocks[4] = _xor_blocks(blocks[4], blocks[5])
@@ -212,6 +249,20 @@ def meowhash256(data: bytes) -> bytes:
         blocks[2] = _xor_blocks(blocks[2], blocks[6])
         blocks[3] = _xor_blocks(blocks[3], blocks[7])
 
+        # Reverse butterfly (bidirectional full diffusion)
+        blocks[7] = _xor_blocks(blocks[7], blocks[6])
+        blocks[5] = _xor_blocks(blocks[5], blocks[4])
+        blocks[3] = _xor_blocks(blocks[3], blocks[2])
+        blocks[1] = _xor_blocks(blocks[1], blocks[0])
+        blocks[7] = _xor_blocks(blocks[7], blocks[5])
+        blocks[6] = _xor_blocks(blocks[6], blocks[4])
+        blocks[3] = _xor_blocks(blocks[3], blocks[1])
+        blocks[2] = _xor_blocks(blocks[2], blocks[0])
+        blocks[7] = _xor_blocks(blocks[7], blocks[3])
+        blocks[6] = _xor_blocks(blocks[6], blocks[2])
+        blocks[5] = _xor_blocks(blocks[5], blocks[1])
+        blocks[4] = _xor_blocks(blocks[4], blocks[0])
+
     state_bytes = bytearray()
     for b in blocks:
         state_bytes.extend(b)
@@ -223,15 +274,16 @@ def meowhash256(data: bytes) -> bytes:
     state[14] = (state[14] ^ (input_len & mask)) & mask
     state[15] = (state[15] ^ ((input_len * golden) & mask)) & mask
 
+    # S5: Nonlinear folding with V6 position-dependent shifts
     for i in range(8):
         rotated = _rotl64(state[15 - i], rot_64[i & 3])
         state[i] = (state[i] + rotated) & mask
-        state[i] ^= (state[i] >> 29)
+        state[i] ^= (state[i] >> (29 + (i & 3)))  # V6
 
     for i in range(4):
         rotated = _rotl64(state[7 - i], rot_64[i & 3])
         state[i] = (state[i] + rotated) & mask
-        state[i] ^= (state[i] >> 29)
+        state[i] ^= (state[i] >> (29 + (i & 3)))  # V6
 
     result = bytearray(_4Q_PACK(state[0], state[1], state[2], state[3]))
 
