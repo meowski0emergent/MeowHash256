@@ -352,21 +352,37 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
             }
 
             /* S2+E2: Butterfly cross-block mix (3 stages, ILP=4) */
-            /* Stage 1 */
+            /* Forward butterfly: Stage 1 */
             blocks[0] = veorq_u8(blocks[0], blocks[1]);
             blocks[2] = veorq_u8(blocks[2], blocks[3]);
             blocks[4] = veorq_u8(blocks[4], blocks[5]);
             blocks[6] = veorq_u8(blocks[6], blocks[7]);
-            /* Stage 2 */
+            /* Forward butterfly: Stage 2 */
             blocks[0] = veorq_u8(blocks[0], blocks[2]);
             blocks[4] = veorq_u8(blocks[4], blocks[6]);
             blocks[1] = veorq_u8(blocks[1], blocks[3]);
             blocks[5] = veorq_u8(blocks[5], blocks[7]);
-            /* Stage 3 */
+            /* Forward butterfly: Stage 3 */
             blocks[0] = veorq_u8(blocks[0], blocks[4]);
             blocks[1] = veorq_u8(blocks[1], blocks[5]);
             blocks[2] = veorq_u8(blocks[2], blocks[6]);
             blocks[3] = veorq_u8(blocks[3], blocks[7]);
+
+            /* Reverse butterfly: Stage 1 */
+            blocks[7] = veorq_u8(blocks[7], blocks[6]);
+            blocks[5] = veorq_u8(blocks[5], blocks[4]);
+            blocks[3] = veorq_u8(blocks[3], blocks[2]);
+            blocks[1] = veorq_u8(blocks[1], blocks[0]);
+            /* Reverse butterfly: Stage 2 */
+            blocks[7] = veorq_u8(blocks[7], blocks[5]);
+            blocks[6] = veorq_u8(blocks[6], blocks[4]);
+            blocks[3] = veorq_u8(blocks[3], blocks[1]);
+            blocks[2] = veorq_u8(blocks[2], blocks[0]);
+            /* Reverse butterfly: Stage 3 */
+            blocks[7] = veorq_u8(blocks[7], blocks[3]);
+            blocks[6] = veorq_u8(blocks[6], blocks[2]);
+            blocks[5] = veorq_u8(blocks[5], blocks[1]);
+            blocks[4] = veorq_u8(blocks[4], blocks[0]);
         }
 
         /* Store blocks back */
@@ -396,6 +412,7 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
             }
 
             /* S2+E2: Butterfly cross-block mix */
+            /* Forward butterfly */
             soft_xor_block(blocks[0], blocks[1]);
             soft_xor_block(blocks[2], blocks[3]);
             soft_xor_block(blocks[4], blocks[5]);
@@ -410,6 +427,22 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
             soft_xor_block(blocks[1], blocks[5]);
             soft_xor_block(blocks[2], blocks[6]);
             soft_xor_block(blocks[3], blocks[7]);
+
+            /* Reverse butterfly (bidirectional full diffusion) */
+            soft_xor_block(blocks[7], blocks[6]);
+            soft_xor_block(blocks[5], blocks[4]);
+            soft_xor_block(blocks[3], blocks[2]);
+            soft_xor_block(blocks[1], blocks[0]);
+
+            soft_xor_block(blocks[7], blocks[5]);
+            soft_xor_block(blocks[6], blocks[4]);
+            soft_xor_block(blocks[3], blocks[1]);
+            soft_xor_block(blocks[2], blocks[0]);
+
+            soft_xor_block(blocks[7], blocks[3]);
+            soft_xor_block(blocks[6], blocks[2]);
+            soft_xor_block(blocks[5], blocks[1]);
+            soft_xor_block(blocks[4], blocks[0]);
         }
 
         for (i = 0; i < 8; i++)
