@@ -16,7 +16,7 @@ MeowHash256 is a 256-bit hash algorithm based on an absorb-squeeze sponge constr
 
 ## Security Improvements (V1–V6 + Butterfly-Fix)
 
-Based on a comprehensive cryptological analysis (January 2026), six improvements were implemented:
+Based on a comprehensive cryptological analysis (February 2026), six improvements were implemented:
 
 | Fix | Description | Cost |
 |-----|-------------|------|
