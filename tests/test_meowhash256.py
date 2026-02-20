@@ -294,7 +294,7 @@ def test_short_input_sensitivity():
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("MeowHash256 — Test Suite (V1-V6 + Butterfly-Fix)")
+    print("MeowHash256 — Test Suite (V1-V6, N1-N4)")
     print("=" * 60)
 
     test_constants()
