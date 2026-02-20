@@ -14,9 +14,9 @@ MeowHash256 is a 256-bit hash algorithm based on an absorb-squeeze sponge constr
 - ARM AES Crypto Extensions + x86/generic fallback
 - Triple one-way barrier (Nonlinear Folding + Feed-Forward + AES Nonlinearity)
 
-## Security Improvements (V1–V6 + Butterfly-Fix)
+## Security Improvements (V1–V6, N1–N4)
 
-Based on a comprehensive cryptological analysis (February 2026), six improvements were implemented:
+Based on comprehensive cryptological analyses, ten improvements were implemented:
 
 | Fix | Description | Cost |
 |-----|-------------|------|
@@ -26,9 +26,12 @@ Based on a comprehensive cryptological analysis (February 2026), six improvement
 | **V4** | Absorb cross-coupling to opposite state half | 1 XOR/segment |
 | **V5** | Empty-input path consistency | 1 XOR |
 | **V6** | Position-dependent shift constants in folding | 0 ops |
-| **Butterfly-Fix** | Reverse butterfly for bidirectional full diffusion | 12 x 128-bit XOR/round |
+| **N1** | Feistel-style butterfly (eliminates GF(2)-cancellation) | 24 x 128-bit XOR/round |
+| **N2** | MAGIC_128 from hex bytes of sqrt(2) (full 8-bit entropy) | 0 ops (constants only) |
+| **N3** | Position-dependent absorb rotation (ROT_64[m & 3]) | 0 ops |
+| **N4** | Separate finalization keys RK_FINAL_1/RK_FINAL_2 | 0 ops (constants only) |
 
-**Result:** All 22 cryptographic tests passed. Avalanche deviation: 0.005%. No collisions, no differential characteristics, not reverse-engineerable.
+**Result:** All cryptographic tests passed. Avalanche deviation: ~0.2%. No collisions, no differential characteristics, not reverse-engineerable.
 
 ## Project Structure
 
