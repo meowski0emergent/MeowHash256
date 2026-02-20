@@ -106,7 +106,7 @@ state[pos_xor] ^= node
 m = absorb_counter & 15
 state[m] += state[(m + 1) & 15]
 state[m] ^= (state[m] >> 17)
-state[m] = rotl64(state[m], 29)
+state[m] = rotl64(state[m], ROT_64[m & 3])   // N3: positionsabhaengige Rotation
 state[m] ^= state[(m + 7) & 15]
 
 // V4: Cross-Coupling zur gegenueberliegenden State-Haelfte
