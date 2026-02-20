@@ -186,33 +186,32 @@ for i = 0 to 7:
 
 Wobei `AES_Round = AddRoundKey -> SubBytes -> ShiftRows -> MixColumns`
 
-#### 3.8.2 S2+E2: Bidirektionaler Butterfly Cross-Block Mix
+#### 3.8.2 S2+E2: Feistel-artiger Butterfly Cross-Block Mix (N1)
 
 ```
-// Forward-Butterfly (3 Stufen, ILP = 4)
-// Stufe 1
+// Feistel-artiger Butterfly: keine GF(2)-Cancellation (N1)
+// Stride-1: gerade ^= ungerade
 blocks[0] ^= blocks[1];  blocks[2] ^= blocks[3]
 blocks[4] ^= blocks[5];  blocks[6] ^= blocks[7]
-// Stufe 2
-blocks[0] ^= blocks[2];  blocks[4] ^= blocks[6]
-blocks[1] ^= blocks[3];  blocks[5] ^= blocks[7]
-// Stufe 3
+// Stride-1: ungerade ^= gerade (jetzt modifiziert!)
+blocks[1] ^= blocks[0];  blocks[3] ^= blocks[2]
+blocks[5] ^= blocks[4];  blocks[7] ^= blocks[6]
+// Stride-2: untere ^= obere
+blocks[0] ^= blocks[2];  blocks[1] ^= blocks[3]
+blocks[4] ^= blocks[6];  blocks[5] ^= blocks[7]
+// Stride-2: obere ^= untere (modifiziert)
+blocks[2] ^= blocks[0];  blocks[3] ^= blocks[1]
+blocks[6] ^= blocks[4];  blocks[7] ^= blocks[5]
+// Stride-4: erste ^= letzte
 blocks[0] ^= blocks[4];  blocks[1] ^= blocks[5]
 blocks[2] ^= blocks[6];  blocks[3] ^= blocks[7]
-
-// Reverse-Butterfly (3 Stufen, ILP = 4)
-// Stufe 1
-blocks[7] ^= blocks[6];  blocks[5] ^= blocks[4]
-blocks[3] ^= blocks[2];  blocks[1] ^= blocks[0]
-// Stufe 2
-blocks[7] ^= blocks[5];  blocks[6] ^= blocks[4]
-blocks[3] ^= blocks[1];  blocks[2] ^= blocks[0]
-// Stufe 3
-blocks[7] ^= blocks[3];  blocks[6] ^= blocks[2]
-blocks[5] ^= blocks[1];  blocks[4] ^= blocks[0]
+// Stride-4: letzte ^= erste (modifiziert)
+blocks[4] ^= blocks[0];  blocks[5] ^= blocks[1]
+blocks[6] ^= blocks[2];  blocks[7] ^= blocks[3]
 ```
 
 Nach 1 Runde empfangen ALLE 8 Bloecke Informationen von ALLEN 8 Bloecken (8/8 ueberall).
+Die Feistel-Struktur garantiert keine GF(2)-Cancellation, auch isoliert (ohne AES).
 
 ### 3.9 Feed-Forward
 
