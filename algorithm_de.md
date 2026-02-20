@@ -248,7 +248,7 @@ for i = 0 to 3:
 Die Addition (statt nur XOR) macht die Faltung nichtlinear und nicht trivial invertierbar.
 Die variablen Shifts (V6) eliminieren die Klasse von Fixpunkten, bei denen ein einheitlicher Shift keine Wirkung hat.
 
-### 3.12 S1: AES-Finalisierung
+### 3.12 S1: AES-Finalisierung (N4: separate Schluessel)
 
 Output = state[0..3] als 32 Bytes (Little-Endian). Aufgeteilt in zwei 16-Byte-Haelften:
 
@@ -256,14 +256,14 @@ Output = state[0..3] als 32 Bytes (Little-Endian). Aufgeteilt in zwei 16-Byte-Ha
 out_lo = result[0..15]
 out_hi = result[16..31]
 
-// Runde 1: Volle AES-Runde + Cross-Half-XOR
-out_lo = AES_Round(out_lo, RK_FINAL)     // AddRoundKey+SubBytes+ShiftRows+MixColumns
-out_hi = AES_Round(out_hi, RK_FINAL)
+// Runde 1: Volle AES-Runde + Cross-Half-XOR (RK_FINAL_1)
+out_lo = AES_Round(out_lo, RK_FINAL_1)     // AddRoundKey+SubBytes+ShiftRows+MixColumns
+out_hi = AES_Round(out_hi, RK_FINAL_1)
 out_lo = out_lo XOR out_hi               // Inter-Half-Diffusion
 
-// Runde 2: AES ohne MixColumns (Finalrunde)
-out_lo = AES_FinalRound(out_lo, RK_FINAL)  // AddRoundKey+SubBytes+ShiftRows
-out_hi = AES_FinalRound(out_hi, RK_FINAL)
+// Runde 2: AES ohne MixColumns (Finalrunde) (RK_FINAL_2)
+out_lo = AES_FinalRound(out_lo, RK_FINAL_2)  // AddRoundKey+SubBytes+ShiftRows
+out_hi = AES_FinalRound(out_hi, RK_FINAL_2)
 ```
 
 Ergebnis: `out_lo || out_hi` = 32-Byte-Hash
