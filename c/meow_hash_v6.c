@@ -297,7 +297,7 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
 
         state[0] += state[1];
         state[0] ^= (state[0] >> 17);
-        state[0] = rotl64(state[0], 29);
+        state[0] = rotl64(state[0], ROT_64[0]); /* N3: position-dependent (m=0) */
         state[0] ^= state[7];
         /* V5: Empty-input cross-coupling consistency */
         state[8] ^= state[0];
