@@ -190,5 +190,9 @@ python3 benchmarks/benchmark.py
 | ID | Weakness | Severity | Fix |
 |----|----------|----------|-----|
 | W1 | SILVER_64 was even (3 trailing zero bits) — 8:1 mapping in compute_node | MEDIUM | V1 |
-| W2 | Butterfly mixing was unidirectional — Block 7 received info from itself only | MEDIUM | Butterfly-Fix |
+| W2 | Butterfly mixing was unidirectional — Block 7 received info from itself only | MEDIUM | Butterfly-Fix (v6), N1 (v7) |
 | W3 | Misleading documentation ("bidirectional" was false) | LOW | Comment fix |
+| N1 | GF(2)-cancellation in butterfly (linear path, without AES) | LOW | Feistel-style butterfly (v7) |
+| N2 | MAGIC_128 only bytes 0–9 (decimal digits, 3.32 bit entropy) | MEDIUM | Hex bytes of sqrt(2) (v7) |
+| N3 | Absorb rotation constant (29) for all positions | LOW | ROT_64[m & 3] (v7) |
+| N4 | Same finalization key for both AES rounds | LOW | Separate RK_FINAL_1/RK_FINAL_2 (v7) |
