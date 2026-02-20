@@ -26,7 +26,7 @@
  */
 
 #define _GNU_SOURCE
-#include "meow_hash_v6.h"
+#include "meow_hash_v7.h"
 #include <string.h>
 #include <strings.h>
 
@@ -88,7 +88,7 @@ static const uint8_t AES_SBOX[256] __attribute__((used)) = {
 
 /* N2: MAGIC_128 hex bytes of sqrt(2) fractional part — "Nothing Up My Sleeve"
  * Source: fractional part of sqrt(2) = 0x6A09E667F3BCC908B2FB1366EA957D3E...
- * Full 8-bit entropy per byte (replaces v6 decimal digits 0-9) */
+ * Full 8-bit entropy per byte (replaces v7 decimal digits 0-9) */
 static const uint8_t MAGIC_128[128] = {
     0x6A, 0x09, 0xE6, 0x67, 0xF3, 0xBC, 0xC9, 0x08, 0xB2, 0xFB, 0x13, 0x66, 0xEA, 0x95, 0x7D, 0x3E,
     0x3A, 0xDE, 0xC1, 0x75, 0x12, 0x77, 0x50, 0x99, 0xDA, 0x2F, 0x59, 0x0B, 0x06, 0x67, 0x32, 0x2A,
@@ -216,7 +216,7 @@ static void soft_xor_block(uint8_t dst[16], const uint8_t src[16]) {
 
 /* ── Main hash function ─────────────────────────────────────────────────── */
 
-void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_BYTES]) {
+void meow_hash_v7(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_BYTES]) {
     uint64_t state[MEOW_V6_STATE_WORDS];
     int i;
 
@@ -552,9 +552,9 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
     secure_zero(result, sizeof(result));
 }
 
-void meow_hash_v6_hex(const uint8_t *input, size_t len, char hex_out[65]) {
+void meow_hash_v7_hex(const uint8_t *input, size_t len, char hex_out[65]) {
     uint8_t hash[MEOW_V6_HASH_BYTES];
-    meow_hash_v6(input, len, hash);
+    meow_hash_v7(input, len, hash);
     for (int i = 0; i < MEOW_V6_HASH_BYTES; i++) {
         hex_out[i * 2]     = "0123456789abcdef"[hash[i] >> 4];
         hex_out[i * 2 + 1] = "0123456789abcdef"[hash[i] & 0x0F];

@@ -22,16 +22,16 @@ def load_c_library():
                             'build', 'libmeowhash256.so')
     if not os.path.exists(lib_path):
         lib_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                'build', 'libmeowhash_v6.so')
+                                'build', 'libmeowhash_v7.so')
     lib = ctypes.CDLL(lib_path)
-    lib.meow_hash_v6.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_char_p]
-    lib.meow_hash_v6.restype = None
+    lib.meow_hash_v7.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_char_p]
+    lib.meow_hash_v7.restype = None
     return lib
 
 
 def c_meowhash256(lib, data):
     output = ctypes.create_string_buffer(32)
-    lib.meow_hash_v6(data, len(data), output)
+    lib.meow_hash_v7(data, len(data), output)
     return output.raw
 
 

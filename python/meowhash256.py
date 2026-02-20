@@ -325,8 +325,8 @@ def meowhash256_hex(data: bytes) -> str:
 
 
 # Backward compatibility aliases
-meow_hash_v6 = meowhash256
-meow_hash_v6_hex = meowhash256_hex
+meow_hash_v7 = meowhash256
+meow_hash_v7_hex = meowhash256_hex
 
 
 if __name__ == '__main__':

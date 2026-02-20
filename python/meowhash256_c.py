@@ -32,7 +32,7 @@ def _load_library():
     # Try to find the library
     search_paths = [
         Path(__file__).parent.parent / 'build' / 'libmeowhash256.so',
-        Path(__file__).parent.parent / 'build' / 'libmeowhash_v6.so',
+        Path(__file__).parent.parent / 'build' / 'libmeowhash_v7.so',
         Path('/usr/local/lib/libmeowhash256.so'),
         Path('/usr/lib/libmeowhash256.so'),
     ]
@@ -41,10 +41,10 @@ def _load_library():
         if lib_path.exists():
             try:
                 _lib = ctypes.CDLL(str(lib_path))
-                _lib.meow_hash_v6.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_char_p]
-                _lib.meow_hash_v6.restype = None
-                _lib.meow_hash_v6_hex.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_char_p]
-                _lib.meow_hash_v6_hex.restype = None
+                _lib.meow_hash_v7.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_char_p]
+                _lib.meow_hash_v7.restype = None
+                _lib.meow_hash_v7_hex.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_char_p]
+                _lib.meow_hash_v7_hex.restype = None
                 return _lib
             except OSError:
                 continue
@@ -74,9 +74,9 @@ def meowhash256(data: bytes) -> bytes:
 
     output = ctypes.create_string_buffer(32)
     if len(data) == 0:
-        lib.meow_hash_v6(None, 0, output)
+        lib.meow_hash_v7(None, 0, output)
     else:
-        lib.meow_hash_v6(data, len(data), output)
+        lib.meow_hash_v7(data, len(data), output)
     return output.raw
 
 
@@ -101,9 +101,9 @@ def meowhash256_hex(data: bytes) -> str:
 
     hex_buf = ctypes.create_string_buffer(65)
     if len(data) == 0:
-        lib.meow_hash_v6_hex(None, 0, hex_buf)
+        lib.meow_hash_v7_hex(None, 0, hex_buf)
     else:
-        lib.meow_hash_v6_hex(data, len(data), hex_buf)
+        lib.meow_hash_v7_hex(data, len(data), hex_buf)
     return hex_buf.value.decode('ascii')
 
 
@@ -114,8 +114,8 @@ def is_using_c_library() -> bool:
 
 
 # Backward compatibility aliases
-meow_hash_v6 = meowhash256
-meow_hash_v6_hex = meowhash256_hex
+meow_hash_v7 = meowhash256
+meow_hash_v7_hex = meowhash256_hex
 
 
 if __name__ == '__main__':

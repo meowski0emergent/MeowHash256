@@ -13,7 +13,7 @@
  *   - N3: Position-dependent absorb rotation
  *   - N4: Separate finalization keys
  *
- * Output differs from v6 (new algorithm version).
+ * Output differs from v7 (new algorithm version).
  * Security: equal or improved in every dimension.
  */
 
@@ -26,7 +26,7 @@
 #define MEOW_V6_HASH_BYTES  32
 #define MEOW_V6_STATE_WORDS 16
 
-void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_BYTES]);
-void meow_hash_v6_hex(const uint8_t *input, size_t len, char hex_out[65]);
+void meow_hash_v7(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_BYTES]);
+void meow_hash_v7_hex(const uint8_t *input, size_t len, char hex_out[65]);
 
 #endif /* MEOW_HASH_V6_H */

@@ -5,9 +5,9 @@ LDFLAGS = -lm
 SRC_DIR   = c
 BUILD_DIR = build
 
-HASH_SRC  = $(SRC_DIR)/meow_hash_v6.c
+HASH_SRC  = $(SRC_DIR)/meow_hash_v7.c
 MAIN_SRC  = $(SRC_DIR)/main.c
-HEADER    = $(SRC_DIR)/meow_hash_v6.h
+HEADER    = $(SRC_DIR)/meow_hash_v7.h
 
 CLI_BIN   = meowhash256
 SHARED    = libmeowhash256.so

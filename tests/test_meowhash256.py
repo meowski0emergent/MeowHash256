@@ -29,7 +29,7 @@ def load_c_library():
                             'build', 'libmeowhash256.so')
     if not os.path.exists(lib_path):
         lib_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                'build', 'libmeowhash_v6.so')
+                                'build', 'libmeowhash_v7.so')
     if not os.path.exists(lib_path):
         print(f"[WARN] C library not found, building...")
         subprocess.run(['make', 'lib'], cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -37,28 +37,28 @@ def load_c_library():
                                 'build', 'libmeowhash256.so')
 
     lib = ctypes.CDLL(lib_path)
-    lib.meow_hash_v6.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_char_p]
-    lib.meow_hash_v6.restype = None
-    lib.meow_hash_v6_hex.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_char_p]
-    lib.meow_hash_v6_hex.restype = None
+    lib.meow_hash_v7.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_char_p]
+    lib.meow_hash_v7.restype = None
+    lib.meow_hash_v7_hex.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_char_p]
+    lib.meow_hash_v7_hex.restype = None
     return lib
 
 
 def c_meowhash256(lib, data):
     output = ctypes.create_string_buffer(32)
     if len(data) == 0:
-        lib.meow_hash_v6(None, 0, output)
+        lib.meow_hash_v7(None, 0, output)
     else:
-        lib.meow_hash_v6(data, len(data), output)
+        lib.meow_hash_v7(data, len(data), output)
     return output.raw
 
 
 def c_meowhash256_hex(lib, data):
     hex_buf = ctypes.create_string_buffer(65)
     if len(data) == 0:
-        lib.meow_hash_v6_hex(None, 0, hex_buf)
+        lib.meow_hash_v7_hex(None, 0, hex_buf)
     else:
-        lib.meow_hash_v6_hex(data, len(data), hex_buf)
+        lib.meow_hash_v7_hex(data, len(data), hex_buf)
     return hex_buf.value.decode('ascii')
 
 

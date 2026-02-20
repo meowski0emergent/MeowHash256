@@ -304,7 +304,7 @@ Branch Number steigt von 1 (einzelne S-Box) auf 5 (volle AES-Runde mit MDS-MixCo
 | `""` (leer) | `68054b0505fda46148b79f1b36a51c50e8049735e47d6cfdac8dcf5638a3144c` |
 | `"a"` | `9a0299e5484c507432cd92d83e9672cf3781c42de8c5af405d613f2aa2017baf` |
 | `"abc"` | `fdc8684c9d0645be742f0d106d649d5ebae388a99786a869478b79456a907954` |
-| `"Hello, MeowHash v6!"` | `6d28d0b3b21a027b99e38f7bb3b8490b8582007c1d6f56a4aa31593666f3af4d` |
+| `"Hello, MeowHash v7!"` | `6d28d0b3b21a027b99e38f7bb3b8490b8582007c1d6f56a4aa31593666f3af4d` |
 | `"SECRET"` | `e56c2647773e2f0c0d904ed52d67bc495b7d045b9831bcf82cc0eabf6b5601e7` |
 | `"MeowHash"` | `7c11887b28bc6ae6d272a16075646e2d7a809d2b0f5cbc8f2ec9f694ef4cdc53` |
 | 7x `0x00` | `4b98cb52c8c0b396255e20677217d361281540f9d3015f92135ae8a5c6bee3ee` |

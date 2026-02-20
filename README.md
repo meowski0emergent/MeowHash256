@@ -43,8 +43,8 @@ MeowHash256/
 ├── algorithm_de.md          # Full specification (German)
 ├── Makefile                 # Build system
 ├── c/                       # C implementation
-│   ├── meow_hash_v6.h       # Public header
-│   ├── meow_hash_v6.c       # Core implementation (V1–V6)
+│   ├── meow_hash_v7.h       # Public header
+│   ├── meow_hash_v7.c       # Core implementation (V1–V6)
 │   └── main.c               # CLI tool
 ├── python/                  # Python implementations
 │   ├── __init__.py
@@ -87,13 +87,13 @@ Outputs:
 ### C API
 
 ```c
-#include "meow_hash_v6.h"
+#include "meow_hash_v7.h"
 
 uint8_t hash[32];
-meow_hash_v6((const uint8_t *)"Hello", 5, hash);
+meow_hash_v7((const uint8_t *)"Hello", 5, hash);
 
 char hex[65];
-meow_hash_v6_hex((const uint8_t *)"Hello", 5, hex);
+meow_hash_v7_hex((const uint8_t *)"Hello", 5, hex);
 ```
 
 ### Python (Pure)
@@ -140,7 +140,7 @@ python3 tests/test_meowhash256.py
 | `""` (empty) | `68054b0505fda46148b79f1b36a51c50e8049735e47d6cfdac8dcf5638a3144c` |
 | `"a"` | `9a0299e5484c507432cd92d83e9672cf3781c42de8c5af405d613f2aa2017baf` |
 | `"abc"` | `fdc8684c9d0645be742f0d106d649d5ebae388a99786a869478b79456a907954` |
-| `"Hello, MeowHash v6!"` | `6d28d0b3b21a027b99e38f7bb3b8490b8582007c1d6f56a4aa31593666f3af4d` |
+| `"Hello, MeowHash v7!"` | `6d28d0b3b21a027b99e38f7bb3b8490b8582007c1d6f56a4aa31593666f3af4d` |
 | `"SECRET"` | `e56c2647773e2f0c0d904ed52d67bc495b7d045b9831bcf82cc0eabf6b5601e7` |
 | `"MeowHash"` | `7c11887b28bc6ae6d272a16075646e2d7a809d2b0f5cbc8f2ec9f694ef4cdc53` |
 | 7x `0x00` | `4b98cb52c8c0b396255e20677217d361281540f9d3015f92135ae8a5c6bee3ee` |
@@ -190,7 +190,7 @@ python3 benchmarks/benchmark.py
 | ID | Weakness | Severity | Fix |
 |----|----------|----------|-----|
 | W1 | SILVER_64 was even (3 trailing zero bits) — 8:1 mapping in compute_node | MEDIUM | V1 |
-| W2 | Butterfly mixing was unidirectional — Block 7 received info from itself only | MEDIUM | Butterfly-Fix (v6), N1 (v7) |
+| W2 | Butterfly mixing was unidirectional — Block 7 received info from itself only | MEDIUM | Butterfly-Fix (v7), N1 (v7) |
 | W3 | Misleading documentation ("bidirectional" was false) | LOW | Comment fix |
 | N1 | GF(2)-cancellation in butterfly (linear path, without AES) | LOW | Feistel-style butterfly (v7) |
 | N2 | MAGIC_128 only bytes 0–9 (decimal digits, 3.32 bit entropy) | MEDIUM | Hex bytes of sqrt(2) (v7) |

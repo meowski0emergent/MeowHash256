@@ -1,5 +1,5 @@
 /*
- * MeowHash v6 — CLI Tool
+ * MeowHash v7 — CLI Tool
  *
  * Usage:
  *   ./meowhash "string"
@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "meow_hash_v6.h"
+#include "meow_hash_v7.h"
 
 static void print_usage(const char *prog) {
     fprintf(stderr, "Usage:\n");
@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
 
     if (argc == 1) {
         /* Hash empty string */
-        meow_hash_v6_hex(NULL, 0, hex);
+        meow_hash_v7_hex(NULL, 0, hex);
         printf("%s\n", hex);
         return 0;
     }
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
         }
         fclose(f);
 
-        meow_hash_v6_hex(data, (size_t)fsize, hex);
+        meow_hash_v7_hex(data, (size_t)fsize, hex);
         printf("%s  %s\n", hex, argv[2]);
         free(data);
         return 0;
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     if (argc == 2) {
         /* Hash string argument */
         const char *s = argv[1];
-        meow_hash_v6_hex((const uint8_t *)s, strlen(s), hex);
+        meow_hash_v7_hex((const uint8_t *)s, strlen(s), hex);
         printf("%s\n", hex);
         return 0;
     }
