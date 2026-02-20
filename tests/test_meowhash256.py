@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MeowHash256 — Test Suite (V1–V6 + Butterfly-Fix)
+MeowHash256 — Test Suite (V1–V6, N1–N4)
 
 Tests:
   1. Constants verification
@@ -9,7 +9,7 @@ Tests:
   4. Uniqueness
   5. Avalanche effect
   6. C/Python consistency
-  7. Reference values (updated for V1–V6)
+  7. Reference values (updated for N1–N4)
   8. V1 verification (SILVER_64 odd)
   9. Short input sensitivity
 """
