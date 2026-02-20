@@ -183,7 +183,8 @@ def meowhash256(data: bytes) -> bytes:
             m = absorb_counter & 15
             sm = (state[m] + state[(m + 1) & 15]) & mask
             sm ^= (sm >> 17)
-            sm = ((sm << 29) | (sm >> 35)) & mask
+            r_absorb = rot_64[m & 3]  # N3: position-dependent rotation
+            sm = ((sm << r_absorb) | (sm >> (64 - r_absorb))) & mask
             sm ^= state[(m + 7) & 15]
             state[m] = sm
             # V4: Cross-coupling to opposite state half
