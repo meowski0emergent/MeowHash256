@@ -1,5 +1,5 @@
 /*
- * MeowHash v6 — Optimized Implementation (Header)
+ * MeowHash v7 — Optimized Implementation (Header)
  *
  * Security-preserving performance improvements over v5:
  *   - Fixed counter-based absorption (eliminates side-channel via data-dependent routing)
@@ -7,7 +7,13 @@
  *   - NEON SIMD for parallel node computation
  *   - Word-level folding (replaces byte-level Silver-Ratio folding)
  *
- * Output differs from v5 (new algorithm version).
+ * v7 improvements (N1–N4):
+ *   - N1: Feistel-style butterfly (no GF(2)-cancellation)
+ *   - N2: MAGIC_128 from hex bytes of sqrt(2) (full 8-bit entropy)
+ *   - N3: Position-dependent absorb rotation
+ *   - N4: Separate finalization keys
+ *
+ * Output differs from v6 (new algorithm version).
  * Security: equal or improved in every dimension.
  */
 
