@@ -244,7 +244,7 @@ for i = 0 to 3:
     state[i] ^= (state[i] >> (29 + (i & 3)))    // V6: shifts 29, 30, 31, 32
 ```
 
-### 3.12 S1: AES Finalization
+### 3.12 S1: AES Finalization (N4: separate keys)
 
 Output = state[0..3] as 32 bytes (little-endian), split into two 16-byte halves:
 
@@ -252,14 +252,14 @@ Output = state[0..3] as 32 bytes (little-endian), split into two 16-byte halves:
 out_lo = result[0..15]
 out_hi = result[16..31]
 
-// Round 1: Full AES round + cross-half XOR
-out_lo = AES_Round(out_lo, RK_FINAL)
-out_hi = AES_Round(out_hi, RK_FINAL)
+// Round 1: Full AES round + cross-half XOR (RK_FINAL_1)
+out_lo = AES_Round(out_lo, RK_FINAL_1)
+out_hi = AES_Round(out_hi, RK_FINAL_1)
 out_lo = out_lo XOR out_hi
 
-// Round 2: AES without MixColumns (final round)
-out_lo = AES_FinalRound(out_lo, RK_FINAL)
-out_hi = AES_FinalRound(out_hi, RK_FINAL)
+// Round 2: AES without MixColumns (final round) (RK_FINAL_2)
+out_lo = AES_FinalRound(out_lo, RK_FINAL_2)
+out_hi = AES_FinalRound(out_hi, RK_FINAL_2)
 ```
 
 Result: `out_lo || out_hi` = 32-byte hash
