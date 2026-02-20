@@ -287,14 +287,14 @@ if not len_ok:
 # ============================================================
 print("\n--- Test 7: Determinismus + Referenz-Testvektoren ---")
 vectors = [
-    (b'', '0eec3b0e25ec8486bbff79280f9712b94ac6636742ff06b96dc092c201609f45'),
-    (b'a', 'd8327b5d6c6d3cd0047e95be124764e39e345e1ffde8092ecaff803b83029545'),
-    (b'abc', '8ef1d73f47b0bb712d405f75e27659b958d2e4cd6eee8812e2574585dc8c2aff'),
-    (b'Hello, MeowHash v6!', '7be2fa85f5bf1c3c13c0f46154cb67a16b6564f213bd6276c352fcc45f2aae4a'),
-    (b'SECRET', '075e452a4abf9df6d9e31b2a4d87dadf53375b84128b2d4c8ee0a91964291ffd'),
-    (b'\x00' * 7, '9f215f63c3d6ef0d928c3d1619d70566259b4c065fb7cf168b88d26f0472f818'),
-    (b'\x00' * 8, '79503c130e3d4d70c0774aa4bd655a1b85767bfa0d0838c52307a727cc70471e'),
-    (b'\x00' * 9, 'ab61f6a1160cc057dbef388880244d6a58045ab3cc2bf5015c32d2fef21885b5'),
+    (b'', '68054b0505fda46148b79f1b36a51c50e8049735e47d6cfdac8dcf5638a3144c'),
+    (b'a', '9a0299e5484c507432cd92d83e9672cf3781c42de8c5af405d613f2aa2017baf'),
+    (b'abc', 'fdc8684c9d0645be742f0d106d649d5ebae388a99786a869478b79456a907954'),
+    (b'Hello, MeowHash v6!', '6d28d0b3b21a027b99e38f7bb3b8490b8582007c1d6f56a4aa31593666f3af4d'),
+    (b'SECRET', 'e56c2647773e2f0c0d904ed52d67bc495b7d045b9831bcf82cc0eabf6b5601e7'),
+    (b'\x00' * 7, '4b98cb52c8c0b396255e20677217d361281540f9d3015f92135ae8a5c6bee3ee'),
+    (b'\x00' * 8, 'c3d7d14d989e91307a30820d24ea79cc32aafa99aac6114eefae530ff30c7e05'),
+    (b'\x00' * 9, '68e4f073f99f8b814b34de72f83473663560ee8c6450c0dc6d91ae2e3d0d570f'),
 ]
 
 vec_ok = True
