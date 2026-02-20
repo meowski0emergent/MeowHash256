@@ -38,7 +38,7 @@ Based on comprehensive cryptological analyses, ten improvements were implemented
 ```
 MeowHash256/
 ├── README.md                # This file
-├── LICENSE                  # GNU GPL v3.0
+├── LICENSE                  # MIT LICENSE
 ├── algorithm.md             # Full specification (English)
 ├── algorithm_de.md          # Full specification (German)
 ├── Makefile                 # Build system
