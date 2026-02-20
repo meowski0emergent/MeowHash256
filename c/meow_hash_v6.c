@@ -110,9 +110,12 @@ static const uint64_t RK_WORDS[4][2] = {
     { 0x31C83248A7EC35A1ULL, 0x9905A4345F319416ULL },
 };
 
-/* S1: Finalization round key (r=4 in RK derivation) */
-static const uint64_t RK_FINAL[2] = {
-    0xC95EE7759890F4AEULL, 0xA39E617F3ACE9692ULL
+/* N4: Separate finalization round keys (r=4 and r=5 in RK derivation) */
+static const uint64_t RK_FINAL_1[2] = {
+    0x5D67BDF295CAB403ULL, 0x57F81E5CFBF49B30ULL
+};
+static const uint64_t RK_FINAL_2[2] = {
+    0x28E5E35FDCED9BBEULL, 0xAB628FC7C55554B0ULL
 };
 
 /* ── Utility functions ──────────────────────────────────────────────────── */
