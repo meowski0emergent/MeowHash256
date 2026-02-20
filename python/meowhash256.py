@@ -198,7 +198,7 @@ def meowhash256(data: bytes) -> bytes:
         state[1] ^= node
         sm = (state[0] + state[1]) & mask
         sm ^= (sm >> 17)
-        sm = ((sm << 29) | (sm >> 35)) & mask
+        sm = ((sm << rot_64[0]) | (sm >> (64 - rot_64[0]))) & mask  # N3: position-dependent (m=0)
         sm ^= state[7]
         state[0] = sm
         # V5: Empty-input cross-coupling consistency
