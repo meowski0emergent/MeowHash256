@@ -1,4 +1,4 @@
-# MeowHash256 — Vollstaendige Algorithmusspezifikation (V1–V6 + Butterfly-Fix)
+# MeowHash256 — Vollstaendige Algorithmusspezifikation (V1–V6, N1–N4)
 
 ---
 
