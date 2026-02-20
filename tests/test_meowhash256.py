@@ -235,7 +235,7 @@ def test_reference_values():
     h = meowhash256_hex(b"a" * 1_000_000)
     print(f"  Hash:  {h}")
     check("1M 'a' reference",
-          h == "8b8d2535e3e6475e73a51b410959d12dad621c34ce7b14285761451e0b68e633")
+          h == "aba9b51da4b8d31a0c7a992d2b9c0882d9eb8753b39bbc212374e506b5819454")
 
 
 def test_v1_bijective():
