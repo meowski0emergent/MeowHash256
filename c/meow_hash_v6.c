@@ -249,7 +249,7 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
             int m = (int)(absorb_counter & 15);
             state[m] += state[(m + 1) & 15];
             state[m] ^= (state[m] >> 17);
-            state[m] = rotl64(state[m], 29);
+            state[m] = rotl64(state[m], ROT_64[m & 3]); /* N3: position-dependent */
             state[m] ^= state[(m + 7) & 15];
             /* V4: Cross-coupling to opposite state half */
             state[(m + 8) & 15] ^= state[m];
@@ -276,7 +276,7 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
             int m = (int)(absorb_counter & 15);
             state[m] += state[(m + 1) & 15];
             state[m] ^= (state[m] >> 17);
-            state[m] = rotl64(state[m], 29);
+            state[m] = rotl64(state[m], ROT_64[m & 3]); /* N3: position-dependent */
             state[m] ^= state[(m + 7) & 15];
             /* V4: Cross-coupling to opposite state half */
             state[(m + 8) & 15] ^= state[m];
