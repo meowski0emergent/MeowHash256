@@ -19,4 +19,4 @@ Usage:
 from .meowhash256 import meowhash256, meowhash256_hex
 
 __all__ = ['meowhash256', 'meowhash256_hex']
-__version__ = '6.0.0'
+__version__ = '7.0.0'
