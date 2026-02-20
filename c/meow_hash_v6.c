@@ -367,38 +367,37 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
                 blocks[i] = vaesmcq_u8(blocks[i]);
             }
 
-            /* S2+E2: Butterfly cross-block mix (3 stages, ILP=4) */
-            /* Forward butterfly: Stage 1 */
+            /* N1: Feistel-style butterfly (no GF(2)-cancellation) */
+            /* Stride-1: even ^= odd */
             blocks[0] = veorq_u8(blocks[0], blocks[1]);
             blocks[2] = veorq_u8(blocks[2], blocks[3]);
             blocks[4] = veorq_u8(blocks[4], blocks[5]);
             blocks[6] = veorq_u8(blocks[6], blocks[7]);
-            /* Forward butterfly: Stage 2 */
+            /* Stride-1: odd ^= even (modified) */
+            blocks[1] = veorq_u8(blocks[1], blocks[0]);
+            blocks[3] = veorq_u8(blocks[3], blocks[2]);
+            blocks[5] = veorq_u8(blocks[5], blocks[4]);
+            blocks[7] = veorq_u8(blocks[7], blocks[6]);
+            /* Stride-2: lower ^= upper */
             blocks[0] = veorq_u8(blocks[0], blocks[2]);
-            blocks[4] = veorq_u8(blocks[4], blocks[6]);
             blocks[1] = veorq_u8(blocks[1], blocks[3]);
+            blocks[4] = veorq_u8(blocks[4], blocks[6]);
             blocks[5] = veorq_u8(blocks[5], blocks[7]);
-            /* Forward butterfly: Stage 3 */
+            /* Stride-2: upper ^= lower (modified) */
+            blocks[2] = veorq_u8(blocks[2], blocks[0]);
+            blocks[3] = veorq_u8(blocks[3], blocks[1]);
+            blocks[6] = veorq_u8(blocks[6], blocks[4]);
+            blocks[7] = veorq_u8(blocks[7], blocks[5]);
+            /* Stride-4: first ^= last */
             blocks[0] = veorq_u8(blocks[0], blocks[4]);
             blocks[1] = veorq_u8(blocks[1], blocks[5]);
             blocks[2] = veorq_u8(blocks[2], blocks[6]);
             blocks[3] = veorq_u8(blocks[3], blocks[7]);
-
-            /* Reverse butterfly: Stage 1 */
-            blocks[7] = veorq_u8(blocks[7], blocks[6]);
-            blocks[5] = veorq_u8(blocks[5], blocks[4]);
-            blocks[3] = veorq_u8(blocks[3], blocks[2]);
-            blocks[1] = veorq_u8(blocks[1], blocks[0]);
-            /* Reverse butterfly: Stage 2 */
-            blocks[7] = veorq_u8(blocks[7], blocks[5]);
-            blocks[6] = veorq_u8(blocks[6], blocks[4]);
-            blocks[3] = veorq_u8(blocks[3], blocks[1]);
-            blocks[2] = veorq_u8(blocks[2], blocks[0]);
-            /* Reverse butterfly: Stage 3 */
-            blocks[7] = veorq_u8(blocks[7], blocks[3]);
-            blocks[6] = veorq_u8(blocks[6], blocks[2]);
-            blocks[5] = veorq_u8(blocks[5], blocks[1]);
+            /* Stride-4: last ^= first (modified) */
             blocks[4] = veorq_u8(blocks[4], blocks[0]);
+            blocks[5] = veorq_u8(blocks[5], blocks[1]);
+            blocks[6] = veorq_u8(blocks[6], blocks[2]);
+            blocks[7] = veorq_u8(blocks[7], blocks[3]);
         }
 
         /* Store blocks back */
