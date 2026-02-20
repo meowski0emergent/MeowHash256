@@ -40,7 +40,7 @@ def hamming_weight(data):
 
 print("=" * 70)
 print("  MeowHash256 — Kryptographische Qualitaetstests")
-print("  (V1-V6 + Butterfly-Fix)")
+print("  (V1-V6, N1-N4)")
 print("=" * 70)
 
 all_pass = True
