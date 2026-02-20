@@ -426,38 +426,37 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
                 soft_aes_round(blocks[i], indiv_rk);
             }
 
-            /* S2+E2: Butterfly cross-block mix */
-            /* Forward butterfly */
+            /* N1: Feistel-style butterfly (no GF(2)-cancellation) */
+            /* Stride-1: even ^= odd */
             soft_xor_block(blocks[0], blocks[1]);
             soft_xor_block(blocks[2], blocks[3]);
             soft_xor_block(blocks[4], blocks[5]);
             soft_xor_block(blocks[6], blocks[7]);
-
+            /* Stride-1: odd ^= even (modified) */
+            soft_xor_block(blocks[1], blocks[0]);
+            soft_xor_block(blocks[3], blocks[2]);
+            soft_xor_block(blocks[5], blocks[4]);
+            soft_xor_block(blocks[7], blocks[6]);
+            /* Stride-2: lower ^= upper */
             soft_xor_block(blocks[0], blocks[2]);
-            soft_xor_block(blocks[4], blocks[6]);
             soft_xor_block(blocks[1], blocks[3]);
+            soft_xor_block(blocks[4], blocks[6]);
             soft_xor_block(blocks[5], blocks[7]);
-
+            /* Stride-2: upper ^= lower (modified) */
+            soft_xor_block(blocks[2], blocks[0]);
+            soft_xor_block(blocks[3], blocks[1]);
+            soft_xor_block(blocks[6], blocks[4]);
+            soft_xor_block(blocks[7], blocks[5]);
+            /* Stride-4: first ^= last */
             soft_xor_block(blocks[0], blocks[4]);
             soft_xor_block(blocks[1], blocks[5]);
             soft_xor_block(blocks[2], blocks[6]);
             soft_xor_block(blocks[3], blocks[7]);
-
-            /* Reverse butterfly (bidirectional full diffusion) */
-            soft_xor_block(blocks[7], blocks[6]);
-            soft_xor_block(blocks[5], blocks[4]);
-            soft_xor_block(blocks[3], blocks[2]);
-            soft_xor_block(blocks[1], blocks[0]);
-
-            soft_xor_block(blocks[7], blocks[5]);
-            soft_xor_block(blocks[6], blocks[4]);
-            soft_xor_block(blocks[3], blocks[1]);
-            soft_xor_block(blocks[2], blocks[0]);
-
-            soft_xor_block(blocks[7], blocks[3]);
-            soft_xor_block(blocks[6], blocks[2]);
-            soft_xor_block(blocks[5], blocks[1]);
+            /* Stride-4: last ^= first (modified) */
             soft_xor_block(blocks[4], blocks[0]);
+            soft_xor_block(blocks[5], blocks[1]);
+            soft_xor_block(blocks[6], blocks[2]);
+            soft_xor_block(blocks[7], blocks[3]);
         }
 
         for (i = 0; i < 8; i++)
