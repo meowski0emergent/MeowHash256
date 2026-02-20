@@ -1,12 +1,12 @@
 """
-MeowHash256 — Pure Python Reference Implementation (V1–V6 + Butterfly-Fix)
+MeowHash256 — Pure Python Reference Implementation (V1–V6, N1–N4)
 
 This is the pure Python implementation with zero external dependencies.
 For maximum performance, use the C-binding version (meowhash256_c.py).
 
 Security features:
   S1: AES finalization (Branch Number 5)
-  S2: Bidirectional butterfly cross-block mix (full diffusion, ILP 4)
+  S2: Feistel-style butterfly cross-block mix (full diffusion, no GF(2)-cancellation)
   S3: Block-individual round keys
   S4: Pre-squeeze state mixing (bidirectional, V3)
   S5: Nonlinear folding (non-invertible, V6 variable shifts)
@@ -16,6 +16,10 @@ Security features:
   V4: Absorb cross-coupling
   V5: Empty-input path consistency
   V6: Position-dependent shift constants in folding
+  N1: Feistel-style butterfly (eliminates GF(2)-cancellation)
+  N2: MAGIC_128 from hex bytes of sqrt(2) (full 8-bit entropy)
+  N3: Position-dependent absorb rotation
+  N4: Separate finalization keys RK_FINAL_1/RK_FINAL_2
 
 Efficiency features:
   E1: Simplified scalar absorb
