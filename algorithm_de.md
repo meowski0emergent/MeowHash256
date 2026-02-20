@@ -343,4 +343,7 @@ Branch Number steigt von 1 (einzelne S-Box) auf 5 (volle AES-Runde mit MDS-MixCo
 | V4 | Absorb Cross-Coupling zur gegenueberliegenden State-Haelfte | 1 XOR/Segment |
 | V5 | Leerer-Input-Pfad Konsistenz | 1 XOR |
 | V6 | Positionsabhaengige Shift-Konstanten in der Faltung | 0 Ops |
-| Butterfly-Fix | Reverse-Butterfly fuer bidirektionale volle Diffusion | 12 x 128-Bit XOR/Runde |
+| N1 | Feistel-artiger Butterfly (eliminiert GF(2)-Cancellation) | 24 x 128-Bit XOR/Runde |
+| N2 | MAGIC_128 aus Hex-Bytes von sqrt(2) (volle 8-Bit-Entropie) | 0 Ops (nur Konstanten) |
+| N3 | Positionsabhaengige Absorb-Rotation (ROT_64[m & 3]) | 0 Ops (variable statt konstant) |
+| N4 | Separate Finalisierungsschluessel RK_FINAL_1/RK_FINAL_2 | 0 Ops (nur Konstanten) |
