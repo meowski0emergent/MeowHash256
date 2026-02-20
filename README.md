@@ -160,7 +160,7 @@ python3 tests/test_meowhash256.py
 | Length extension | Resistant (triple length injection) |
 | Side-channel | Constant-time (counter-based absorb) |
 | Diffusion | AES MDS (Branch Number 5) |
-| Butterfly diffusion | Bidirectional full (8/8 blocks after 1 round) |
+| Butterfly diffusion | Feistel-style full (8/8 blocks after 1 round, no GF(2)-cancellation) |
 | Reverse-engineerable? | **NO** — 3 blocking barriers |
 
 ### Reverse-Engineering Barriers
