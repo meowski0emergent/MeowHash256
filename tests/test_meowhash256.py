@@ -217,12 +217,12 @@ def test_c_python_hex_consistency(lib):
 
 
 def test_reference_values():
-    print("\n=== Reference Values (V1-V6 + Butterfly-Fix) ===")
+    print("\n=== Reference Values (V1-V6, N1-N4) ===")
     refs = [
         (b"", 'empty string',
-         '0eec3b0e25ec8486bbff79280f9712b94ac6636742ff06b96dc092c201609f45'),
+         '68054b0505fda46148b79f1b36a51c50e8049735e47d6cfdac8dcf5638a3144c'),
         (b"MeowHash", '"MeowHash"',
-         '6df6bc0f68876ceb90d7bf6d158033f05b4955123a6d9e18f4cff5df81603cc3'),
+         '7c11887b28bc6ae6d272a16075646e2d7a809d2b0f5cbc8f2ec9f694ef4cdc53'),
     ]
     for data, desc, expected in refs:
         h = meowhash256_hex(data)
