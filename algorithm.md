@@ -296,7 +296,7 @@ Result: `out_lo || out_hi` = 32-byte hash
 | Side-channel | Constant-time (counter-based absorb) |
 | Squeeze diffusion | AES MDS (Branch Number 5) |
 | Final diffusion | AES (Branch Number 5) |
-| Cross-block diffusion | Bidirectional butterfly (full in 1 round) |
+| Cross-block diffusion | Feistel-style butterfly (full in 1 round, no GF(2)-cancellation) |
 | Folding | Nonlinear (ADD, variable shifts, non-invertible) |
 | Reverse-engineerable | **NO** — 3 independent blocking barriers |
 
