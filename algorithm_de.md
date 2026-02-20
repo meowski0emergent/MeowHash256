@@ -285,7 +285,7 @@ Branch Number steigt von 1 (einzelne S-Box) auf 5 (volle AES-Runde mit MDS-MixCo
 | Seitenkanal-Resistenz | Konstante Zeit (zaehlerbasiert) |
 | Squeeze-Diffusion | AES MDS (Branch Number 5) |
 | Finale Diffusion | AES (Branch Number 5) |
-| Cross-Block-Diffusion | Bidirektionaler Butterfly (voll in 1 Runde) |
+| Cross-Block-Diffusion | Feistel-artiger Butterfly (voll in 1 Runde, keine GF(2)-Cancellation) |
 | Faltung | Nichtlinear (ADD, variable Shifts, nicht invertierbar) |
 | Rueckrechenbar? | **NEIN** — 3 unabhaengige Barrieren |
 
