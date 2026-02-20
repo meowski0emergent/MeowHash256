@@ -298,18 +298,23 @@ def meowhash256(data: bytes) -> bytes:
 
     result = bytearray(_4Q_PACK(state[0], state[1], state[2], state[3]))
 
-    final_rk_bytes = bytearray(struct.pack('<Q', RK_FINAL[0])) + \
-                     bytearray(struct.pack('<Q', RK_FINAL[1]))
+    # N4: Separate finalization keys
+    final_rk1_bytes = bytearray(struct.pack('<Q', RK_FINAL_1[0])) + \
+                      bytearray(struct.pack('<Q', RK_FINAL_1[1]))
+    final_rk2_bytes = bytearray(struct.pack('<Q', RK_FINAL_2[0])) + \
+                      bytearray(struct.pack('<Q', RK_FINAL_2[1]))
 
     out_lo = bytearray(result[0:16])
     out_hi = bytearray(result[16:32])
 
-    out_lo = _aes_round(out_lo, final_rk_bytes)
-    out_hi = _aes_round(out_hi, final_rk_bytes)
+    # Round 1: Full AES + cross-half XOR (RK_FINAL_1)
+    out_lo = _aes_round(out_lo, final_rk1_bytes)
+    out_hi = _aes_round(out_hi, final_rk1_bytes)
     out_lo = _xor_blocks(out_lo, out_hi)
 
-    out_lo = _aes_final_round(out_lo, final_rk_bytes)
-    out_hi = _aes_final_round(out_hi, final_rk_bytes)
+    # Round 2: Final AES (no MixColumns) (RK_FINAL_2)
+    out_lo = _aes_final_round(out_lo, final_rk2_bytes)
+    out_hi = _aes_final_round(out_hi, final_rk2_bytes)
 
     return bytes(out_lo + out_hi)
 
