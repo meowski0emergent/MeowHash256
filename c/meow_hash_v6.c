@@ -499,25 +499,28 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
         write_le64(&result[i * 8], state[i]);
     }
 
-    /* === S1: AES Finalization (Branch Number 5) === */
+    /* === S1: AES Finalization (Branch Number 5) — N4: separate keys === */
     {
-        uint8_t final_rk_bytes[16];
-        write_le64(&final_rk_bytes[0], RK_FINAL[0]);
-        write_le64(&final_rk_bytes[8], RK_FINAL[1]);
+        uint8_t final_rk1_bytes[16], final_rk2_bytes[16];
+        write_le64(&final_rk1_bytes[0], RK_FINAL_1[0]);
+        write_le64(&final_rk1_bytes[8], RK_FINAL_1[1]);
+        write_le64(&final_rk2_bytes[0], RK_FINAL_2[0]);
+        write_le64(&final_rk2_bytes[8], RK_FINAL_2[1]);
 
 #if defined(MEOW_USE_ARM_CRYPTO)
-        uint8x16_t frk = vld1q_u8(final_rk_bytes);
+        uint8x16_t frk1 = vld1q_u8(final_rk1_bytes);
+        uint8x16_t frk2 = vld1q_u8(final_rk2_bytes);
         uint8x16_t out_lo = vld1q_u8(&result[0]);
         uint8x16_t out_hi = vld1q_u8(&result[16]);
 
-        /* Round 1: Full AES + cross-half XOR */
-        out_lo = vaesmcq_u8(vaeseq_u8(out_lo, frk));
-        out_hi = vaesmcq_u8(vaeseq_u8(out_hi, frk));
+        /* Round 1: Full AES + cross-half XOR (RK_FINAL_1) */
+        out_lo = vaesmcq_u8(vaeseq_u8(out_lo, frk1));
+        out_hi = vaesmcq_u8(vaeseq_u8(out_hi, frk1));
         out_lo = veorq_u8(out_lo, out_hi);
 
-        /* Round 2: Final AES (no MixColumns) */
-        out_lo = vaeseq_u8(out_lo, frk);
-        out_hi = vaeseq_u8(out_hi, frk);
+        /* Round 2: Final AES (no MixColumns) (RK_FINAL_2) */
+        out_lo = vaeseq_u8(out_lo, frk2);
+        out_hi = vaeseq_u8(out_hi, frk2);
 
         vst1q_u8(&result[0], out_lo);
         vst1q_u8(&result[16], out_hi);
@@ -526,14 +529,14 @@ void meow_hash_v6(const uint8_t *input, size_t len, uint8_t output[MEOW_V6_HASH_
         memcpy(out_lo, &result[0], 16);
         memcpy(out_hi, &result[16], 16);
 
-        /* Round 1: Full AES + cross-half XOR */
-        soft_aes_round(out_lo, final_rk_bytes);
-        soft_aes_round(out_hi, final_rk_bytes);
+        /* Round 1: Full AES + cross-half XOR (RK_FINAL_1) */
+        soft_aes_round(out_lo, final_rk1_bytes);
+        soft_aes_round(out_hi, final_rk1_bytes);
         soft_xor_block(out_lo, out_hi);
 
-        /* Round 2: Final AES (no MixColumns) */
-        soft_aes_final_round(out_lo, final_rk_bytes);
-        soft_aes_final_round(out_hi, final_rk_bytes);
+        /* Round 2: Final AES (no MixColumns) (RK_FINAL_2) */
+        soft_aes_final_round(out_lo, final_rk2_bytes);
+        soft_aes_final_round(out_hi, final_rk2_bytes);
 
         memcpy(&result[0], out_lo, 16);
         memcpy(&result[16], out_hi, 16);
